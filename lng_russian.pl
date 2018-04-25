@@ -1,0 +1,24 @@
+our @MON = ('янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек');
+$lang{TASK} = 'Задача';
+$lang{TASKS} = 'Задачи';
+$lang{ADD_TASK} = 'Добавить задачу';
+$lang{CHANGE_TASK} = 'Изменить задачу';
+$lang{MY_TASKS} = 'Мои задачи';
+$lang{TASKS_LIST} = 'Список задач';
+$lang{TASKS_TYPE} = 'Типы задач';
+$lang{TASK_TYPE} = 'Тип задачи';
+$lang{TASK_NAME} = 'Название задачи';
+$lang{TASK_DESCRIBE} = 'Описание задачи';
+$lang{PLAN_DATE} = 'Запланированная дата';
+$lang{CONTROL_DATE} = 'Контрольная дата';
+$lang{CONTROL_TIME} = 'Контрольный срок';
+$lang{DAYS_N} = 'Дня';
+$lang{WEEKS} = 'Недели';
+$lang{TASK_TYPE_ADDED} = "Новый тип задачи добавлен.";
+$lang{TASK_TYPE_ERROR} = "Ошибка при создании нового типа задач.";
+$lang{UNFULFILLED_TASKS} = "Невыполненные задачи";
+$lang{COMPLETED_TASKS} = "Выполненные задачи";
+$lang{TASK_IN_WORK} = "В работе";
+$lang{TASK_IN_QUEUE} = "В очереди";
+
+1;

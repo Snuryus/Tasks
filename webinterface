@@ -1,0 +1,440 @@
+#!perl
+=head1 NAME
+
+ Tasks web functions
+
+=cut
+
+
+use strict;
+use warnings FATAL => 'all';
+
+use Time::Piece;
+use Tasks::db::Tasks;
+use Abills::Base qw/in_array _bp/;
+
+our(
+  %lang,
+  $html,
+  $admin,
+  $db,
+  %conf,
+  @MODULES,
+  @MON,
+);
+
+Time::Piece::mon_list(@MON);
+
+my $Tasks = Tasks->new($db, $admin, \%conf);
+
+#**********************************************************
+=head2 tasks_list()
+
+=cut
+#**********************************************************
+sub tasks_list {
+
+  _tasks_check_state();
+
+  my $params->{U_TASKS} = tasks_table({ TABLE_NAME => $lang{UNFULFILLED_TASKS}, STATE => 2});
+  $params->{U_COUNT} = $Tasks->{TOTAL} || 0;
+  $params->{C_TASKS} = tasks_table({ TABLE_NAME => $lang{COMPLETED_TASKS}, STATE => 1});
+  $params->{C_COUNT} = $Tasks->{TOTAL} || 0;
+  $params->{W_TASKS} = tasks_table({ TABLE_NAME => $lang{TASK_IN_WORK}, STATE => 0, CONTROL_DATE => ">=$DATE", PLAN_DATE => "<=$DATE"});
+  $params->{W_COUNT} = $Tasks->{TOTAL} || 0;
+  $params->{Q_TASKS} = tasks_table({ TABLE_NAME => $lang{TASK_IN_QUEUE}, STATE => 0, PLAN_DATE => ">$DATE"});
+  $params->{Q_COUNT} = $Tasks->{TOTAL} || 0;
+
+  $html->tpl_show('', $params, { TPL => 'tasks_list', MODULE => 'Tasks'});
+
+  return 1;
+}
+#**********************************************************
+=head2 tasks_table()
+
+=cut
+#**********************************************************
+sub tasks_table {
+  my ($attr) = @_;
+
+  my $tasks_list = $Tasks->list({
+    COLS_NAME     => 1,
+    COLS_UPPER    => 1,
+    PG            => $FORM{pg},
+    SORT          => $FORM{sort} || '',
+    DESC          => $FORM{desc} || '',
+    %{$attr ? $attr : { } },
+  });
+
+  my $f_index = get_function_index('task_web_add');
+
+  my $pages_qs = '';
+  my $table = $html->table({
+    width               => '100%',
+    caption             => $attr->{TABLE_NAME} || $lang{TASKS},
+    title               => [ $lang{NAME}, $lang{RESPOSIBLE}, $lang{PLAN_DATE}, $lang{CONTROL_TIME}],
+    ID                  => 'Tasks',
+    pages               => ($Tasks->{TOTAL} - 1),
+    qs                  => $pages_qs,
+    HAS_FUNCTION_FIELDS => 1,
+    # DATA_TABLE          => 1,
+    # MENU                => "$lang{ADD}:index=$f_index&adding=1:btn bg-olive margin;",
+  });
+
+  foreach my $task (@$tasks_list) {
+    my $del_button = $html->button("", "index=$f_index&del=$task->{id}", { class => "text-danger", ADD_ICON => "glyphicon glyphicon-trash" });;
+    my $edit_button = $html->button("", "index=$f_index&chg_task=$task->{id}", { ADD_ICON => "glyphicon glyphicon-pencil" });
+    $table->addrow(
+      $task->{name},
+      $task->{resposible_name},
+      $task->{plan_date},
+      $task->{control_date},
+      "$edit_button$del_button"
+    );
+  }
+
+  return $table->show({OUTPUT_TO_RETURN => 1});
+}
+
+#**********************************************************
+=head2 my_tasks_list()
+
+=cut
+#**********************************************************
+sub my_tasks_list {
+  my ($attr) = @_;
+
+  my $tasks_list = $Tasks->list({
+    COLS_NAME     => 1,
+    COLS_UPPER    => 1,
+    SORT          => 'tm.control_date',
+    %{$attr ? $attr : { } },
+  });
+
+  my $f_index = get_function_index('my_tasks');
+  my $result = '';
+
+  foreach (@$tasks_list) {
+    my $d = Time::Piece->strptime($_->{CONTROL_DATE}, "%Y-%m-%d");
+    my $c = Time::Piece->strptime($DATE, "%Y-%m-%d");
+
+    my $days = ($d - $c) / 86400 + 1;
+
+    my $color = '';
+    if ($days < 2) {
+      $color = 'OrangeRed';
+    }
+    elsif ($days < 7) {
+      $color = 'LimeGreen';
+    }
+    else {
+      $color = 'CadetBlue';
+    }
+
+    $result .= $html->tpl_show('', { 
+        ID        => "task_$_->{ID}",
+        TITLE     => $_->{NAME},
+        BODY      => $_->{DESCR},
+        C_DATE    => $d->mday . " " . $d->monname,
+        COLOR     => $color,
+        SHOW_LINK => "$SELF_URL?index=$index&show=$_->{ID}",
+      },
+      { TPL => 'task_card', MODULE => 'Tasks', OUTPUT2RETURN => 1}
+    );
+  }
+
+  return $html->tpl_show('', { TASKS => $result }, { TPL => 'tasks', MODULE => 'Tasks', OUTPUT2RETURN => 1 });;
+}
+
+
+#**********************************************************
+=head2 my_tasks()
+
+=cut
+#**********************************************************
+sub my_tasks {
+  #TODO View form
+  #TODO Task done button + logic
+
+  if($FORM{done} && $FORM{ID}) {
+    _task_change_state({ ID => $FORM{ID}, STATE => 1, COMMENTS => $FORM{COMMENTS} });
+  }
+  elsif($FORM{undone} && $FORM{ID}) {
+    _task_change_state({ ID => $FORM{ID}, STATE => 2, COMMENTS => $FORM{COMMENTS} });
+  }
+  elsif($FORM{show}) {
+    _task_show($FORM{show});
+  }
+
+  print my_tasks_list({ RESPOSIBLE => $admin->{AID}, STATE => '0', PLAN_DATE => "<=$DATE" });
+
+  return 1;
+}
+
+#**********************************************************
+=head2 task_web_add()
+
+=cut
+#**********************************************************
+sub task_web_add {
+
+  my $params = ();
+  my $types_list = $Tasks->types_list();
+  my %hash = ();
+  my $task_info = {};
+  my $json_text = "{";
+  foreach (@$types_list) {
+    $_->{additional_fields} ||= '""';
+    $json_text .= qq/"$_->{id}":$_->{additional_fields},/; 
+  }
+  $json_text =~ s/,$/}/;
+  # $params->{JSON_LIST} = JSON->new->utf8(0)->encode(\%hash);
+  $params->{JSON_LIST} = $json_text;
+  $params->{BTN_ACTION} = 'add';
+  $params->{BTN_NAME} = $lang{ADD};
+  $params->{BOX_TITLE} = $lang{ADD_TASK};
+
+  if ($FORM{add}) {
+    _task_add(\%FORM);
+    _error_show($Tasks);
+  }
+  elsif ($FORM{del}) {
+    $Tasks->del({ ID => $FORM{del} });
+  }
+  elsif ($FORM{chg_task}) {
+    $params->{BTN_ACTION} = 'chg';
+    $params->{BTN_NAME} = $lang{CHANGE};
+    $params->{BOX_TITLE} = $lang{CHANGE_TASK};
+    $task_info = $Tasks->info({ ID => $FORM{chg_task} });
+  }
+
+  $params->{SEL_TASK_TYPE} = _task_type_select($types_list, $task_info->{task_type} || '');
+  $params->{SEL_RESPOSIBLE} = _resposible_select({ SELECTED => ($task_info->{resposible} || '') });
+
+  $task_info->{PLAN_DATE} //= $DATE;
+
+  $html->tpl_show('', { %$params, %$task_info }, { TPL => 'task_add', MODULE => 'Tasks' });
+
+  return 1;
+}
+
+#**********************************************************
+=head2 _task_show(task_id)
+
+=cut
+#**********************************************************
+sub _task_show {
+  my ($task_id) = @_;
+  my $task_info = $Tasks->info({ ID => $task_id });
+
+  if ($task_info->{STATE} == 1) {
+    $task_info->{INFO} = $html->element('span', "Выполнена", { class => "label label-success" });
+  }
+  elsif ($task_info->{STATE} == 2) {
+    $task_info->{INFO} = $html->element('span', "Не выполнена", { class => "label label-danger" });
+  }
+
+  $html->tpl_show('', $task_info, { TPL => 'task_show', MODULE => 'Tasks' });
+
+  return 1;
+}
+
+#**********************************************************
+=head2 _task_add($attr)
+
+=cut
+#**********************************************************
+sub _task_add {
+  my ($attr) = @_;
+
+  my $type_info = $Tasks->type_info({ ID => $FORM{TASK_TYPE} });
+  my $add_values = ();
+  if ($type_info->{ADDITIONAL_FIELDS} && $type_info->{ADDITIONAL_FIELDS} ne "{}") {
+    my $arr = decode_json($type_info->{ADDITIONAL_FIELDS});
+    foreach (@$arr) {
+      $add_values->{$_->{NAME}} = $FORM{$_->{NAME}} || '';
+    }
+  }
+  $attr->{ADDITIONAL_VALUES} = JSON->new->utf8(0)->encode($add_values) if ($add_values);
+
+  $Tasks->add({ AID => $admin->{AID}, %$attr });
+  return 1;
+}
+
+#**********************************************************
+=head2 _task_change_state($attr) 
+  ID      - task id
+  STATE   - new state
+  COMMENT - comment
+
+=cut
+#**********************************************************
+sub _task_change_state {
+  my ($attr) = @_;
+
+  $Tasks->chg($attr);
+
+  if($Tasks->{errno}) {
+    $html->message('err', $lang{ERROR}, $Tasks->{errstr});
+    return 1;
+  }
+
+  _plugin_fn({ ACTION => 'task_done',   ID => $attr->{ID} }) if($attr->{STATE} == 1);
+  _plugin_fn({ ACTION => 'task_undone', ID => $attr->{ID} }) if($attr->{STATE} == 2);
+
+  return 1;
+}
+
+
+
+#**********************************************************
+=head2 tasks_type_config()
+
+=cut
+#**********************************************************
+sub tasks_type_config {
+  if ($FORM{add}) {
+    $FORM{ADDITIONAL_FIELDS} ||= '{}'; 
+    $Tasks->type_add({ %FORM });
+    if (!$Tasks->{errno}) {
+     $html->message('info', $lang{INFO}, $lang{TASK_TYPE_ADDED});
+    }
+    else {
+      $html->message('err', $lang{ERROR}, "$lang{TASK_TYPE_ERROR}\n $Tasks->{errstr}");
+    }
+  }
+  elsif ($FORM{add_type}) {
+    my $params = ();
+    $params->{BTN_ACTION} = 'add';
+    $params->{BTN_NAME} = $lang{ADD};
+    $params->{ADDITIONAL_FIELDS} ||= '""';
+    $html->tpl_show('', $params, { TPL => 'tasks_type_add', MODULE => 'Tasks' });
+  }
+  # elsif ($FORM{chg_type}) {
+  #   my $params = ();
+  #   $params->{BTN_ACTION} = 'chg';
+  #   $params->{BTN_NAME} = $lang{CHANGE};
+  #   my $type_info = $Tasks->type_info({ ID => $FORM{chg_type} });
+  #   $type_info->{ADDITIONAL_FIELDS} ||= '""';
+  #   $html->tpl_show('', { %$params, %$type_info }, { TPL => 'tasks_type_add', MODULE => 'Tasks' });
+  # }
+
+
+  print tasks_type_table();
+
+  return 1;
+}
+
+#**********************************************************
+=head2 tasks_type_table()
+
+=cut
+#**********************************************************
+sub tasks_type_table {
+  my ($attr) = @_;
+
+  my $types_list = $Tasks->types_list({
+    COLS_NAME     => 1,
+    COLS_UPPER    => 1,
+    PG            => $FORM{pg},
+    SORT          => $FORM{sort} || '',
+    DESC          => $FORM{desc} || '',
+    %{$attr ? $attr : { } },
+  });
+
+  my $f_index = get_function_index('tasks_type_config');
+
+  my $pages_qs = '';
+  my $table = $html->table({
+    width               => '100%',
+    caption             => $lang{TASKS_TYPE},
+    title               => [ "ID", $lang{NAME}],
+    ID                  => 'Tasks_type',
+    pages               => ($Tasks->{TOTAL} - 1),
+    qs                  => $pages_qs,
+    # HAS_FUNCTION_FIELDS => 1,
+    MENU                => "$lang{ADD}:index=$f_index&add_type=1:btn bg-olive margin;",
+  });
+
+  foreach my $type (@$types_list) {
+    $table->addrow(
+      $type->{id},
+      $type->{name},
+    );
+  }
+
+  return $table->show({OUTPUT_TO_RETURN => 1});
+}
+
+
+#**********************************************************
+=head2 _resposible_select()
+
+=cut
+#**********************************************************
+sub _resposible_select {
+  my ($attr) = @_;
+
+  my $result = sel_admins({ NAME => 'RESPOSIBLE', %$attr });
+
+  return $result;
+}
+
+#**********************************************************
+=head2 _task_type_select()
+
+=cut
+#**********************************************************
+sub _task_type_select {
+  my ($types_list, $selected) = @_;
+
+  my $result = $html->form_select('TASK_TYPE', {
+    SELECTED => $selected || '',
+    SEL_LIST => $types_list,
+    NO_ID    => 1,
+  });
+
+  return $result;
+}
+
+#**********************************************************
+=head2 _tasks_check_state()
+
+=cut
+#**********************************************************
+sub _tasks_check_state {
+  my $list = $Tasks->list({ CONTROL_DATE => "<$DATE", STATE => '0'});
+  foreach (@$list) {
+    _task_change_state({ ID => $_->{id}, STATE => 2, COMMENTS => 'Closed on expiration' });
+  }
+
+  return 1;
+}
+
+#**********************************************************
+=head2 _plugin_fn($attr)
+  ACTION - name of plugin function
+  ID     - task id
+=cut
+#**********************************************************
+sub _plugin_fn {
+  my ($attr) = @_;
+
+  my $task_info = $Tasks->info({ ID => $attr->{ID} });
+
+  my @plugins_list = split(',', $task_info->{PLUGINS});
+
+  foreach (@plugins_list) {
+    #TODO  use function from plugin
+  }
+
+  return 1;
+}
+
+sub open_modal {
+  $html->tpl_show('', {OLD_VALUE => '123'}, { TPL => 'modal', MODULE => 'Tasks' });
+
+  return 1;
+}
+
+1;
