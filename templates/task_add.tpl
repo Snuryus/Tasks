@@ -70,7 +70,7 @@
 <script type="text/javascript">
   try {
     var arr = JSON.parse('%JSON_LIST%');
-    console.log(arr);
+    var adminsArr = JSON.parse('%JSON_ADMINS%');
   }
   catch (err) {
     alert('JSON parse error.');
@@ -78,6 +78,21 @@
 
   function rebuild_form(type_num) {
     jQuery('.appended_field').remove();
+
+    var adminsList = adminsArr[type_num].split(',');
+    jQuery('#RESPOSIBLE option').each(function() {
+      var aid = jQuery(this).attr("value");
+      if (aid == 0) {
+        jQuery(this).hide();
+      }
+      else if (adminsList.indexOf(aid) >= 0 || adminsList == '') {
+        jQuery(this).show();
+      }
+      else {
+        jQuery(this).hide();
+      }
+    });
+    jQuery("#RESPOSIBLE").val(1).trigger("chosen:updated");
 
     jQuery.each(arr[type_num], function(field) {
       var fieldLabel = arr[type_num][field]['LABEL'];
@@ -91,28 +106,27 @@
     });
   };
 
-  // function change_control_select() {
-  //   var controlDate = new Date(jQuery( '#CONTROL_DATE' ).val() + 'T00:00:00Z');
-  //   var planDate = new Date(jQuery( '#PLAN_DATE' ).val() + 'T00:00:00Z');
-  //   var diff = (controlDate - planDate) / 86400000;
-  //   alert(diff);
-  //   switch (diff) {
-  //     case 1:
-  //       jQuery("#sel_control_time [value='1']").attr("selected", "selected");
-  //       break;
-  //     case 3:
-  //       jQuery("#sel_control_time [value='2']").attr("selected", "selected");
-  //       break;
-  //     case 7:
-  //       jQuery("#sel_control_time [value='3']").attr("selected", "selected");
-  //       break;
-  //     case 14:
-  //       jQuery("#sel_control_time [value='4']").attr("selected", "selected");
-  //       break;
-  //     default:
-  //       jQuery("#sel_control_time [value='1']").attr("selected", "selected");
-  //   }
-  // }
+  function change_control_select() {
+    var controlDate = new Date(jQuery( '#CONTROL_DATE' ).val() + 'T00:00:00Z');
+    var planDate = new Date(jQuery( '#PLAN_DATE' ).val() + 'T00:00:00Z');
+    var diff = (controlDate - planDate) / 86400000;
+    switch (diff) {
+      case 1:
+        jQuery("#sel_control_time").val(1).trigger("chosen:updated");
+        break;
+      case 3:
+        jQuery("#sel_control_time").val(2).trigger("chosen:updated");
+        break;
+      case 7:
+        jQuery("#sel_control_time").val(3).trigger("chosen:updated");
+        break;
+      case 14:
+        jQuery("#sel_control_time").val(4).trigger("chosen:updated");
+        break;
+      default:
+        jQuery("#sel_control_time").val(1).trigger("chosen:updated");
+    }
+  }
 
   function change_control_time() {
     var c = jQuery( '#sel_control_time' ).val();
@@ -138,7 +152,9 @@
 
   jQuery(function() {
     rebuild_form(jQuery( '#TASK_TYPE' ).val());
-    change_control_time();
+    if (jQuery( '#CONTROL_DATE' ).val() != '') {
+      change_control_select();
+    }
 
     jQuery( '#TASK_TYPE' ).change(function() {
       rebuild_form(jQuery( '#TASK_TYPE' ).val());
@@ -153,9 +169,6 @@
     });
 
     jQuery( '#task_add_form' ).submit(function( event ) {
-      
-
-
       if (jQuery( '#PLAN_DATE' ).val() === '') {
         alert( 'Укажите дату.' );
         event.preventDefault();

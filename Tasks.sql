@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS `tasks_type` (
   PRIMARY KEY (`id`)
 )
   COMMENT = 'Tasks type';
+
+CREATE TABLE IF NOT EXISTS `tasks_admins` (
+  `aid` SMALLINT(6) UNSIGNED NOT NULL DEFAULT '0',
+  `resposible` TINYINT(2) UNSIGNED NOT NULL DEFAULT '0',
+  `admin` TINYINT(2) UNSIGNED NOT NULL DEFAULT '0',
+  `sysadmin` TINYINT(2) UNSIGNED NOT NULL DEFAULT '0',
+  PRIMARY KEY (`aid`)
+)
+  COMMENT = 'Tasks admins';

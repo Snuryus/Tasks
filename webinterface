@@ -182,14 +182,18 @@ sub task_web_add {
   my $types_list = $Tasks->types_list();
   my %hash = ();
   my $task_info = {};
-  my $json_text = "{";
+  my $json_fields = "{";
+  my $json_admins = "{";
   foreach (@$types_list) {
     $_->{additional_fields} ||= '""';
-    $json_text .= qq/"$_->{id}":$_->{additional_fields},/; 
+    $json_fields .= qq/"$_->{id}":$_->{additional_fields},/;
+    $json_admins .= qq/"$_->{id}":"$_->{admins}",/;
   }
-  $json_text =~ s/,$/}/;
+  $json_fields =~ s/,$/}/;
+  $json_admins =~ s/,$/}/;
   # $params->{JSON_LIST} = JSON->new->utf8(0)->encode(\%hash);
-  $params->{JSON_LIST} = $json_text;
+  $params->{JSON_LIST} = $json_fields;
+  $params->{JSON_ADMINS} = $json_admins;
   $params->{BTN_ACTION} = 'add';
   $params->{BTN_NAME} = $lang{ADD};
   $params->{BOX_TITLE} = $lang{ADD_TASK};
@@ -295,7 +299,7 @@ sub _task_change_state {
 sub tasks_type_config {
   if ($FORM{add}) {
     $FORM{ADDITIONAL_FIELDS} ||= '{}'; 
-    $Tasks->type_add({ %FORM });
+    $Tasks->type_add({ %FORM, ADMINS => $FORM{RESPOSIBLE_LIST} });
     if (!$Tasks->{errno}) {
      $html->message('info', $lang{INFO}, $lang{TASK_TYPE_ADDED});
     }
@@ -308,6 +312,7 @@ sub tasks_type_config {
     $params->{BTN_ACTION} = 'add';
     $params->{BTN_NAME} = $lang{ADD};
     $params->{ADDITIONAL_FIELDS} ||= '""';
+    $params->{ADMINS_LIST} = _admins_list({ RESPOSIBLE => 1 });
     $html->tpl_show('', $params, { TPL => 'tasks_type_add', MODULE => 'Tasks' });
   }
   # elsif ($FORM{chg_type}) {
@@ -366,6 +371,53 @@ sub tasks_type_table {
   return $table->show({OUTPUT_TO_RETURN => 1});
 }
 
+#**********************************************************
+=head2 _resposible_select()
+
+=cut
+#**********************************************************
+sub tasks_admins {
+  my ($attr) = @_;
+
+  if($FORM{SAVE}) {
+    my $admins_list = $Tasks->admins_list();
+    foreach my $line (@$admins_list) {
+      my $field_name = "admin_" . $line->{aid};
+      if ($FORM{$field_name}) {
+        my @permits = split (',', $FORM{$field_name});
+        $Tasks->admins_change({ 
+          AID        => $line->{aid},
+          RESPOSIBLE => $permits[0],
+          ADMIN      => $permits[1],
+          SYSADMIN   => $permits[2], 
+        });
+      }
+    }
+  }
+
+  my $admins_list = $Tasks->admins_list( $attr );
+  
+  my $table = $html->table({
+    width               => '100%',
+    caption             => $lang{PERMISIONS},
+    title_plain         => [ $lang{ADMIN}, "Ответственный", "Добавление задач", "Добавление типов задач"],
+    ID                  => 'tasks_admins',
+  });
+
+  foreach my $line (@$admins_list) {
+    $table->addrow( 
+      $line->{a_name},
+      $html->form_input('', '', { TYPE => 'checkbox', STATE => ($line->{resposible}?'checked':''), class => 'resposible', EX_PARAMS => "aid=$line->{aid}" }),
+      $html->form_input('', '', { TYPE => 'checkbox', STATE => ($line->{admin}?'checked':''), class => 'admin', EX_PARAMS => "aid=$line->{aid}" }),
+      $html->form_input('', '', { TYPE => 'checkbox', STATE => ($line->{sysadmin}?'checked':''), class => 'sysadmin', EX_PARAMS => "aid=$line->{aid}" }),
+    );
+  }
+
+  print $table->show();
+  $html->tpl_show('', '', { TPL => 'admin_permits', MODULE => 'Tasks' });
+
+  return 1;
+}
 
 #**********************************************************
 =head2 _resposible_select()
@@ -398,6 +450,34 @@ sub _task_type_select {
 }
 
 #**********************************************************
+=head2 _admins_list()
+
+=cut
+#**********************************************************
+sub _admins_list {
+  my ($attr) = @_;
+  my $admins_list = $Tasks->admins_list( $attr );
+  my $result = '';
+  
+  foreach my $line (@$admins_list) {
+    $result .= $html->tpl_show('', $line, { TPL => 'admin_checkbox', MODULE => 'Tasks', OUTPUT2RETURN => 1 });
+  }
+
+  return $result;
+}
+
+#**********************************************************
+=head2 _admins_list()
+
+=cut
+#**********************************************************
+sub _admin_role {
+  my ($aid) = @_;
+  my $admin_info = $Tasks->admins_list({ AID => $aid });
+  return $admin_info->[0];
+}
+
+#**********************************************************
 =head2 _tasks_check_state()
 
 =cut
@@ -427,12 +507,6 @@ sub _plugin_fn {
   foreach (@plugins_list) {
     #TODO  use function from plugin
   }
-
-  return 1;
-}
-
-sub open_modal {
-  $html->tpl_show('', {OLD_VALUE => '123'}, { TPL => 'modal', MODULE => 'Tasks' });
 
   return 1;
 }

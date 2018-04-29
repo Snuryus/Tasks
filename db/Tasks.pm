@@ -7,7 +7,7 @@ package Tasks;
 =cut
 
 use strict;
-use parent 'main';
+use parent 'dbcore';
 my $MODULE = 'Tasks';
 
 my Admins $admin;
@@ -84,7 +84,7 @@ sub chg {
   my $self = shift;
   my ($attr) = @_;
 
-  $self->changes2(
+  $self->changes(
     {
       CHANGE_PARAM => 'ID',
       TABLE        => 'tasks_main',
@@ -120,7 +120,7 @@ sub list {
     { WHERE => 1 }
   );
 
-  $self->query2("SELECT 
+  $self->query("SELECT 
       $self->{SEARCH_FIELDS}
       tm.id,
       tm.name,
@@ -152,7 +152,7 @@ sub list {
   my $list = $self->{list};
 
   if ($self->{TOTAL} >= 0 && !$attr->{SKIP_TOTAL}) {
-    $self->query2("SELECT count( DISTINCT tm.id) AS total 
+    $self->query("SELECT count( DISTINCT tm.id) AS total 
         FROM tasks_main tm
         LEFT JOIN tasks_type tt ON (tm.task_type=tt.id)
         LEFT JOIN admins a ON (tm.aid=a.aid)
@@ -206,7 +206,7 @@ sub type_info {
   my $self = shift;
   my ($attr) = @_;
 
-  $self->query2("SELECT *
+  $self->query("SELECT *
       FROM tasks_type
       WHERE id= ?",
     undef,
@@ -225,7 +225,7 @@ sub type_info {
 sub types_list {
   my $self = shift;
  
-  $self->query2("SELECT *
+  $self->query("SELECT *
       FROM tasks_type",
     undef,
     { COLS_NAME => 1, COLS_UPPER => 1 }
@@ -233,6 +233,80 @@ sub types_list {
   return [ ] if ($self->{errno});
 
   return $self->{list};
+}
+
+#**********************************************************
+=head2 admins_list($attr)
+
+=cut
+#**********************************************************
+sub admins_list {
+  my $self = shift;
+  my ($attr) = @_;
+
+  my $PG   = $attr->{PG} || '0';
+  my $PAGE_ROWS = $attr->{PAGE_ROWS} || 25;
+  my $SORT = ($attr->{SORT}) ? $attr->{SORT} : 1;
+  my $DESC = ($attr->{DESC}) ? $attr->{DESC} : '';
+
+  my $WHERE =  $self->search_former($attr, [
+      ['AID',              'INT',         'a.aid',                    1 ],
+      ['RESPOSIBLE',       'INT',         'ta.resposible',            1 ],
+      ['ADMIN',            'INT',         'ta.admin',                 1 ],
+      ['SYSADMIN',         'INT',         'ta.sysadmin',              1 ],
+    ],
+    { WHERE => 1 }
+  );
+
+  $self->query("SELECT 
+      $self->{SEARCH_FIELDS}
+      a.aid,
+      a.name as a_name,
+      a.id as a_login,
+      ta.resposible,
+      ta.admin,
+      ta.sysadmin
+      FROM admins a
+      LEFT JOIN tasks_admins ta ON (ta.aid=a.aid)
+      $WHERE;",
+    undef,
+    {%$attr, COLS_NAME => 1, COLS_UPPER => 1}
+  );
+
+  return [] if ($self->{errno});
+
+  my $list = $self->{list};
+
+  if ($self->{TOTAL} >= 0 && !$attr->{SKIP_TOTAL}) {
+    $self->query("SELECT count( DISTINCT a.aid) AS total 
+        FROM admins a
+        LEFT JOIN tasks_admins ta ON (ta.aid=a.aid)
+        $WHERE;",
+      undef,
+      { INFO => 1 }
+    );
+  }
+
+  return $list;
+}
+
+#**********************************************************
+=head2 admins_change($attr)
+
+=cut
+#**********************************************************
+sub admins_change {
+  my $self = shift;
+  my ($attr) = @_;
+
+  $self->changes(
+    {
+      CHANGE_PARAM => 'AID',
+      TABLE        => 'tasks_admins',
+      DATA         => $attr,
+    } );
+
+  return 1;
 }
 
 
