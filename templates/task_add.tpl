@@ -1,5 +1,6 @@
 <form class='form-horizontal' id='task_add_form'>
 <input type='hidden' name='index' value='$index'>
+<input type='hidden' name='ID' value='%ID%'>
   <div class='row'>
     <div class='box box-theme box-form'>
       <div class='box-header with-border'><h3 class='box-title'>%BOX_TITLE%</h3>
@@ -42,7 +43,7 @@
         <div class='form-group'>
           <label class='control-label col-md-4' for='PLAN_DATE'>_{PLAN_DATE}_:</label>
           <div class='col-md-8'>
-            <input class='form-control' data-provide='datepicker' data-date-format='yyyy-mm-dd' value='%PLAN_DATE%' name='PLAN_DATE' id='PLAN_DATE'>
+            <input type="text" class='datepicker form-control' value='%PLAN_DATE%' name='PLAN_DATE' id='PLAN_DATE'>
           </div>
         </div>
 
@@ -92,17 +93,42 @@
         jQuery(this).hide();
       }
     });
-    jQuery("#RESPOSIBLE").val(1).trigger("chosen:updated");
+    var selected = adminsList[0] || 1;
+    jQuery("#RESPOSIBLE").val(selected).trigger("chosen:updated");
 
     jQuery.each(arr[type_num], function(field) {
       var fieldLabel = arr[type_num][field]['LABEL'];
       var fieldName = arr[type_num][field]['NAME'];
       var fieldType = arr[type_num][field]['TYPE'];
 
-      var element = jQuery("<div></div>").addClass("form-group appended_field");
-      element.append(jQuery("<label for='" + fieldName + "'></label>").text(fieldLabel).addClass("control-label col-md-4"));
-      element.append(jQuery("<div></div>").addClass("col-md-8").append(jQuery("<input name='" + fieldName + "' id='" + fieldName + "' type='" + fieldType + "'>").addClass("form-control")));
-      jQuery('#task_form_body').append(element);
+      // var element = jQuery("<div></div>").addClass("form-group appended_field");
+      // element.append(jQuery("<label for='" + fieldName + "'></label>").text(fieldLabel).addClass("control-label col-md-4"));
+      // element.append(jQuery("<div></div>").addClass("col-md-8").append(jQuery("<input name='" + fieldName + "' id='" + fieldName + "' type='" + fieldType + "'>").addClass("form-control")));
+      // jQuery('#task_form_body').append(element);
+
+
+      jQuery('#task_form_body')
+        .append(
+          jQuery('<div></div>')
+            .addClass('form-group appended_field')
+            .append(
+              jQuery('<label></label>')
+                .attr('for', fieldName)
+                .text(fieldLabel)
+                .addClass('control-label col-md-4')
+            )
+            .append(
+              jQuery("<div></div>")
+                .addClass("col-md-8")
+                .append(
+                  jQuery("<input />")
+                    .attr('name', fieldName)
+                    .attr('id', fieldName)
+                    .attr('type', fieldType)
+                    .addClass('form-control')
+                )
+            )
+      );
     });
   };
 
@@ -154,6 +180,9 @@
     rebuild_form(jQuery( '#TASK_TYPE' ).val());
     if (jQuery( '#CONTROL_DATE' ).val() != '') {
       change_control_select();
+    }
+    else {
+      change_control_time();
     }
 
     jQuery( '#TASK_TYPE' ).change(function() {

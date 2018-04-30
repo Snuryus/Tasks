@@ -17,7 +17,7 @@ $lang{TASK_TYPE_ADDED} = "Новий тип задачі додано.";
 $lang{TASK_TYPE_ERROR} = "Помилка створення нового типу задач.";
 $lang{UNFULFILLED_TASKS} = "Невиконані задачі";
 $lang{COMPLETED_TASKS} = "Виконані задачі";
-$lang{TASK_IN_WORK} = "В работі";
+$lang{TASK_IN_WORK} = "В роботі";
 $lang{TASK_IN_QUEUE} = "В черзі";
 
 1;
