@@ -9,7 +9,7 @@
         var element = this;
         var aid = jQuery(element).find('input').attr('aid');
         var permits = [];
-        permits.push(jQuery(element).find('.resposible').prop('checked')?1:0) ;
+        permits.push(jQuery(element).find('.responsible').prop('checked')?1:0) ;
         permits.push(jQuery(element).find('.admin').prop('checked')?1:0) ;
         permits.push(jQuery(element).find('.sysadmin').prop('checked')?1:0) ;
         jQuery('<input />').attr('type', 'hidden')

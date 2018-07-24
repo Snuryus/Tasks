@@ -1,4 +1,4 @@
-our @MON = ('янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек');
+our @MON = ('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря');
 $lang{TASK} = 'Задача';
 $lang{TASKS} = 'Задачи';
 $lang{ADD_TASK} = 'Добавить задачу';
@@ -20,5 +20,21 @@ $lang{UNFULFILLED_TASKS} = "Невыполненные задачи";
 $lang{COMPLETED_TASKS} = "Выполненные задачи";
 $lang{TASK_IN_WORK} = "В работе";
 $lang{TASK_IN_QUEUE} = "В очереди";
+$lang{DUE_DATE} = "Выполнить до";
+$lang{PARTCIPIANTS} = "Участники";
+$lang{DONE} = "Выполнена";
+$lang{UNDONE} = "Не выполнена";
+$lang{CREATOR} = "Добавил";
+$lang{CLOSE_TASK} = "Закрыть задачу";
+$lang{SELECTED} = "Выбрано";
+$lang{ADD_TASK_TYPE} = "Добавить тип задачи";
+$lang{NEW_TYPE} = "Новый тип";
+$lang{TASK_TYPE_NAME} = 'Название типа задачи';
+$lang{ASSIGNED_ADMINS} = 'Администраторы, которым могут быть назначены задачи этого типа';
+$lang{ADDITIONAL_FIELDS} = "Дополнительные поля";
+$lang{FIELD_TYPE} = "Тип поля";
+$lang{FIELD_NAME} = "Имя поля";
+$lang{PLUGINS} = "Дополнения";
+$lang{CHANGE_RESPONSIBLE} = "Изменить ответственного";
 
 1;

@@ -34,31 +34,49 @@
         </div>
 
         <div class="form-group">
-          <label class='control-label col-md-4' for='responsible'>_{RESPOSIBLE}_:</label>
+          <label class='control-label col-md-4' for='responsible'>_{RESPONSIBLE}_:</label>
           <div class='col-md-8'>  
-            %SEL_RESPOSIBLE%
+            %SEL_RESPONSIBLE%
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class='control-label col-md-4' for='responsible'>_{PARTCIPIANTS}_:</label>
+          <div class='col-md-8'>
+            <input type='hidden' id='PARTCIPIANTS_LIST' name='PARTCIPIANTS_LIST' value='%PARTCIPIANTS_LIST%'>
+            <button type='button' class='btn btn-primary pull-left' data-toggle='modal' data-target='#myModal' 
+                    onClick='return openModal()'>_{SELECTED}_: <span class='admin_count'></span></button>
+          </div>
+        </div>
+                   <!-- Modal -->
+        <div class="modal fade" id="myModal" role="dialog">
+          <div class="modal-dialog">
+          
+            <!-- Modal content-->
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">_{PARTCIPIANTS}_</h4>
+              </div>
+              <div class="modal-body">
+               %ADMINS_LIST%
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal" onClick='return closeModal()'>Close</button>
+              </div>
+            </div>
+            
           </div>
         </div>
 
         <div class='form-group'>
-          <label class='control-label col-md-4' for='PLAN_DATE'>_{PLAN_DATE}_:</label>
+          <label class='control-label col-md-4' for='CONTROL_DATE'>_{DUE_DATE}_:</label>
           <div class='col-md-8'>
-            <input type="text" class='datepicker form-control' value='%PLAN_DATE%' name='PLAN_DATE' id='PLAN_DATE'>
+            <input type="text" class='datepicker form-control' value='%CONTROL_DATE%' name='CONTROL_DATE' id='CONTROL_DATE'>
           </div>
         </div>
 
-        <div class='form-group'>
-          <label class='control-label col-md-4' for='PLAN_DATE'>_{CONTROL_TIME}_:</label>
-          <div class='col-md-8'>
-            <input type='hidden' name='CONTROL_DATE' id='CONTROL_DATE' value='%CONTROL_DATE%'>
-            <select class='form-control' id='sel_control_time'>
-              <option value='1'>1 _{DAY}_</option>
-              <option value='2'>3 _{DAYS_N}_</option>
-              <option value='3'>1 _{WEEK}_</option>
-              <option value='4'>2 _{WEEKS}_</option>
-            </select>
-          </div>
-        </div>
+        %PLUGINS_FIELDS%
 
       </div>
       <div class='box-footer'>
@@ -72,16 +90,23 @@
   try {
     var arr = JSON.parse('%JSON_LIST%');
     var adminsArr = JSON.parse('%JSON_ADMINS%');
+    var partcipiantsArr = JSON.parse('%JSON_PARTCIPIANTS%');
+    var pluginsArr = JSON.parse('%JSON_PLUGINS_FIELDS%');
   }
   catch (err) {
     alert('JSON parse error.');
   }
+    var oldresponsible = '%RESPONSIBLE%';
 
   function rebuild_form(type_num) {
     jQuery('.appended_field').remove();
+    jQuery('.plugin_field').remove();
+
+    document.getElementById("PARTCIPIANTS_LIST").value = partcipiantsArr[type_num];
+    setCheckboxes();
 
     var adminsList = adminsArr[type_num].split(',');
-    jQuery('#RESPOSIBLE option').each(function() {
+    jQuery('#RESPONSIBLE option').each(function() {
       var aid = jQuery(this).attr("value");
       if (aid == 0) {
         jQuery(this).hide();
@@ -94,27 +119,21 @@
       }
     });
     var selected = adminsList[0] || 1;
-    jQuery("#RESPOSIBLE").val(selected).trigger("chosen:updated");
+    if (adminsList.indexOf(oldresponsible) >= 0 || adminsList == '') {
+      selected = oldresponsible;
+    }
+    jQuery("#RESPONSIBLE").val(selected).trigger("chosen:updated");
 
-    jQuery.each(arr[type_num], function(field) {
-      var fieldLabel = arr[type_num][field]['LABEL'];
-      var fieldName = arr[type_num][field]['NAME'];
-      var fieldType = arr[type_num][field]['TYPE'];
-
-      // var element = jQuery("<div></div>").addClass("form-group appended_field");
-      // element.append(jQuery("<label for='" + fieldName + "'></label>").text(fieldLabel).addClass("control-label col-md-4"));
-      // element.append(jQuery("<div></div>").addClass("col-md-8").append(jQuery("<input name='" + fieldName + "' id='" + fieldName + "' type='" + fieldType + "'>").addClass("form-control")));
-      // jQuery('#task_form_body').append(element);
-
-
+    // additional fields
+    jQuery.each(arr[type_num], function(field, element) {
       jQuery('#task_form_body')
         .append(
           jQuery('<div></div>')
             .addClass('form-group appended_field')
             .append(
               jQuery('<label></label>')
-                .attr('for', fieldName)
-                .text(fieldLabel)
+                .attr('for', element['NAME'])
+                .text(element['LABEL'])
                 .addClass('control-label col-md-4')
             )
             .append(
@@ -122,83 +141,79 @@
                 .addClass("col-md-8")
                 .append(
                   jQuery("<input />")
-                    .attr('name', fieldName)
-                    .attr('id', fieldName)
-                    .attr('type', fieldType)
+                    .attr('name', element['NAME'])
+                    .attr('id', element['NAME'])
+                    .attr('type', element['TYPE'])
                     .addClass('form-control')
                 )
             )
       );
     });
+
+    // plugin fields
+    jQuery.each(pluginsArr[type_num], function(field, element) {
+      jQuery('#task_form_body')
+        .append(
+          jQuery('<div></div>')
+            .addClass('form-group plugin_field')
+            .append(
+              jQuery('<label></label>')
+                .attr('for', element['NAME'])
+                .text(element['LABEL'])
+                .addClass('control-label col-md-4')
+            )
+            .append(
+              jQuery("<div></div>")
+                .addClass("col-md-8")
+                .append(
+                  jQuery("<input />")
+                    .attr('name', element['NAME'])
+                    .attr('id', element['NAME'])
+                    .val(element['VALUE'])
+                    .addClass('form-control')
+                )
+            )
+      );
+    });
+
   };
 
-  function change_control_select() {
-    var controlDate = new Date(jQuery( '#CONTROL_DATE' ).val() + 'T00:00:00Z');
-    var planDate = new Date(jQuery( '#PLAN_DATE' ).val() + 'T00:00:00Z');
-    var diff = (controlDate - planDate) / 86400000;
-    switch (diff) {
-      case 1:
-        jQuery("#sel_control_time").val(1).trigger("chosen:updated");
-        break;
-      case 3:
-        jQuery("#sel_control_time").val(2).trigger("chosen:updated");
-        break;
-      case 7:
-        jQuery("#sel_control_time").val(3).trigger("chosen:updated");
-        break;
-      case 14:
-        jQuery("#sel_control_time").val(4).trigger("chosen:updated");
-        break;
-      default:
-        jQuery("#sel_control_time").val(1).trigger("chosen:updated");
-    }
+  function closeModal() {
+    var partcipiantsArr = [];
+    jQuery( '.admin_checkbox' ).each(function() {
+      if (this.checked) {
+        partcipiantsArr.push(jQuery(this).attr("aid"));
+      }
+    });
+    jQuery( '.admin_count' ).text(partcipiantsArr.length);
+    document.getElementById("PARTCIPIANTS_LIST").value = partcipiantsArr.join();
   }
 
-  function change_control_time() {
-    var c = jQuery( '#sel_control_time' ).val();
-    var d = new Date(jQuery( '#PLAN_DATE' ).val() + 'T00:00:00Z');
-    switch (c) {
-      case '1':
-        d.setDate(d.getDate() + 1);
-        break;
-      case '2':
-        d.setDate(d.getDate() + 3);
-        break;
-      case '3':
-        d.setDate(d.getDate() + 7);
-        break;
-      case '4':
-        d.setDate(d.getDate() + 14);
-        break;
-      default:
-        alert ('undefined select');
-    }
-    jQuery('#CONTROL_DATE').val(d.toISOString().substring(0, 10));
+  function setCheckboxes() {
+    var partcipiantsList = document.getElementById("PARTCIPIANTS_LIST").value;
+    var partcipiantsArr = partcipiantsList.split(',');
+    var count = 0;
+    jQuery( '.admin_checkbox' ).each(function() {
+      if ( partcipiantsArr.indexOf(jQuery(this).attr("aid")) >= 0 ) {
+        jQuery(this).prop("checked", true);
+        count++;
+      }
+      else {
+        jQuery(this).prop("checked", false);
+      }
+    });
+    jQuery( '.admin_count' ).text(count);
   }
 
   jQuery(function() {
     rebuild_form(jQuery( '#TASK_TYPE' ).val());
-    if (jQuery( '#CONTROL_DATE' ).val() != '') {
-      change_control_select();
-    }
-    else {
-      change_control_time();
-    }
 
     jQuery( '#TASK_TYPE' ).change(function() {
       rebuild_form(jQuery( '#TASK_TYPE' ).val());
     });
 
-    jQuery('#PLAN_DATE').change(function() {
-      change_control_time();
-    })
-
-    jQuery( '#sel_control_time' ).change(function() {
-      change_control_time();
-    });
-
     jQuery( '#task_add_form' ).submit(function( event ) {
-      if (jQuery( '#PLAN_DATE' ).val() === '') {
+      if (jQuery( '#CONTROL_DATE' ).val() === '') {
         alert( 'Укажите дату.' );
         event.preventDefault();
       }
@@ -206,7 +221,7 @@
         alert( 'Введите описание задачи.' );
         event.preventDefault();
       }
-      else if (jQuery( '#RESPOSIBLE' ).val() === '') {
+      else if (jQuery( '#RESPONSIBLE' ).val() === '') {
         alert( 'Укажите ответственного.' );
         event.preventDefault();
       }

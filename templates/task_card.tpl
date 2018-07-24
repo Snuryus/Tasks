@@ -1,7 +1,6 @@
-<a href='%SHOW_LINK%'>
-  <div class='card' id='%ID%' style='background-color: %COLOR%;'>
-  	<span class='label label-inverse pull-right'>%C_DATE% <i class='glyphicon glyphicon-time'></i></span>
-    <h4>%TITLE%</h4>
-    <div>%BODY%</div>
-  </div>
+<a class="card %CLASS%" href='%SHOW_LINK%'>
+  <div><b>%TYPE_NAME%</b></div>
+  <span>%TITLE%</span>
+  <hr>
+  <span><i class='glyphicon glyphicon-time'></i> %C_DATE%</span>
 </a>

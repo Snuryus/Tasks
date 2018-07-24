@@ -1,10 +1,16 @@
 our %FUNCTIONS_LIST = ();
 
+if ($permissions{4} && $permissions{4}{4}) {
+  $FUNCTIONS_LIST{"20:0:$lang{TASKS}:null"} = 5;
+  $FUNCTIONS_LIST{"21:20:$lang{ADMINS}:tasks_admins"} = 5;
+  $FUNCTIONS_LIST{"22:20:$lang{PLUGINS}:plugins_conig"} = 5;
+}
+
 if (defined( $admin->{AID} )) {
   use Tasks::db::Tasks;
   my $Tasks = Tasks->new($db, $admin, \%conf);
-  my $info = $Tasks->admins_list({ AID => $aid });
-  if ( $info->[0]->{resposible} ) {
+  my $info = $Tasks->admins_list({ AID => $admin->{AID} });
+  if ( $info->[0]->{responsible} ) {
     $FUNCTIONS_LIST{"10:0:$lang{TASKS}:null"} = 8;
     $FUNCTIONS_LIST{"11:10:$lang{MY_TASKS}:my_tasks"} = 8;
   }
@@ -15,8 +21,7 @@ if (defined( $admin->{AID} )) {
   }
   if ( $info->[0]->{sysadmin} ) {
     $FUNCTIONS_LIST{"20:0:$lang{TASKS}:null"} = 5;
-    $FUNCTIONS_LIST{"21:20:$lang{ADMINS}:tasks_admins"} = 5;
-    $FUNCTIONS_LIST{"22:20:$lang{TASKS_TYPE}:tasks_type_config"} = 5;
+    $FUNCTIONS_LIST{"23:20:$lang{TASKS_TYPE}:tasks_type_config"} = 5;
   }
 }
 
